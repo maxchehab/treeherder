@@ -122,7 +122,19 @@ class PushGraph(DjangoObjectType):
     jobs = DjangoFilterConnectionField(JobGraph)
 
     def resolve_jobs(self, args, context, info):
-        return Job.objects.filter(push=self, **args)
+        print("<><><>I'm in the resolver now")
+
+        result = (Job.objects
+            .filter(push=self, **args)
+            # .select_related()
+            # .select_related("job_details")
+            # .select_related("job_log")
+            .select_related("job_type__job_group")
+            .select_related("jobs__failure_classification")
+            .prefetch_related("jobs__failure_classification")
+        )
+        print("<><><> done with the query")
+        return result
 
 
 class Query(graphene.ObjectType):
@@ -165,8 +177,15 @@ class Query(graphene.ObjectType):
     def resolve_all_failure_classifications(self, args, context, info):
         return FailureClassification.objects.all()
 
-    def resolve_all_pushes(self, args, context, info):
-        return Push.objects.filter(**args).select_related("jobs__job_details").select_related("jobs__job_log")
+    # def resolve_all_pushes(self, args, context, info):
+    #     return (Push.objects
+    #         .filter(**args)
+    #         .select_related("jobs__job_details")
+    #         .select_related("repository")
+    #         .select_related("jobs__job_log")
+    #         .prefetch_related("jobs__build_platform")
+    #         .select_related("failure_classification")
+    #         )
 
     def resolve_all_text_log_steps(self, args, context, info):
         return TextLogStep.objects.filter(**args)
